@@ -95,9 +95,7 @@ Game = ->
 		return
 
 	@getBlock = ->
-		grav = @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY)
-		console.log grav
-		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, grav )
+		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY) )
 		return
 
 	@animate = ->
