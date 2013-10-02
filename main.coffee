@@ -1,7 +1,9 @@
 Block = (x,y,g) ->
 	@x = x
-	@y = 10
+	@y = y
 	@g = g
+	@h = 10
+	@w = 10
 	return
 
 Player = (x, y, w, h) ->
@@ -9,9 +11,15 @@ Player = (x, y, w, h) ->
 	@y = y
 	@h = h
 	@w = w
+	@speed = 10
 	return
 
 Game = ->
+
+	START_HEIGHT = 50
+	MIN_GRAVITY = 0.1
+	MAX_GRAVITY = 3
+
 	@canvasElement = null
 	@canvas = null
 	@player = null
@@ -19,16 +27,20 @@ Game = ->
 	@gameLoop = null
 	@left = false
 	@right = false
+	@width = $(window).width()
+	@height = $(window).height() - 20
+	@score = 0
 
 	@init = ->
 		@canvasElement = $('#canvas')[0]
 		@canvas = @canvasElement.getContext('2d')
-		@canvas.canvas.width = $(window).width()
-		@canvas.canvas.height = $(window).height()-20
+		@canvas.canvas.width = @width
+		@canvas.canvas.height = @height
 
 		@player = new Player((($(window).width()/2)-100), ($(window).height()-200), 200, 50)
 
-		@blocks.push new Block(50,10,1)
+		@blocks.push new Block(50, START_HEIGHT, (Math.floor((Math.random()*MAX_GRAVITY)+1)))
+		setInterval(@getBlock.bind(@), 3000)
 
 		@setEventHandlers(@)
 
@@ -43,22 +55,35 @@ Game = ->
 		@canvas.fillRect(@player.x, @player.y, @player.w, @player.h)
 
 		for block in @blocks
-			@canvas.fillRect(block.x,block.y, 5, 5)
+			@canvas.fillRect(block.x,block.y, block.h, block.w)
 
-		if @player.x is 0
+		if @player.x <= 0
 			@left = false
 		if @player.x >= $(window).width()-@player.w
 			@right = false
 
 		if @left
-			@player.x-=5
+			@player.x-=@player.speed
 		if @right
-			@player.x+=5
+			@player.x+=@player.speed
 
 		for block in @blocks
 			# collision detection else let gravity do its thing.
+			if block.y > @height
+				@blocks.splice(@blocks.indexOf(block),1)
+			else if (block.y >= @player.y and block.y < @player.y+@player.h) and (block.x >= @player.x and block.x < @player.x+@player.w)
+				@blocks.splice(@blocks.indexOf(block),1)
+				@score+=10
+
+			$('.score').html(@score)
+
+		for block in @blocks
 			block.y+=block.g
 
+		return
+
+	@getBlock = ->
+		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, (Math.floor((Math.random()*MAX_GRAVITY)+1)) )
 		return
 
 	@animate = ->
@@ -77,10 +102,10 @@ Game = ->
 			return
 
 		
-		#$(window).keyup (e) ->
-		#	self.left = false
-		#	self.right = false
-		#	return
+		$(window).keyup (e) ->
+			self.left = false
+			self.right = false
+			return
 		
 		return
 
