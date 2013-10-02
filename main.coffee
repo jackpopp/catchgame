@@ -11,14 +11,14 @@ Player = (x, y, w, h) ->
 	@y = y
 	@h = h
 	@w = w
-	@speed = 10
+	@speed = 15
 	return
 
 Game = ->
 
 	START_HEIGHT = 50
-	MIN_GRAVITY = 0.1
-	MAX_GRAVITY = 3
+	MIN_GRAVITY = 2
+	MAX_GRAVITY = 3.2
 
 	@canvasElement = null
 	@canvas = null
@@ -30,6 +30,9 @@ Game = ->
 	@width = $(window).width()
 	@height = $(window).height() - 20
 	@score = 0
+	@timeLeft = new Date().getTime()+60000
+	@frameAnimationId = null
+	@generateBlockInterval = null
 
 	@init = ->
 		@canvasElement = $('#canvas')[0]
@@ -39,8 +42,9 @@ Game = ->
 
 		@player = new Player((($(window).width()/2)-100), ($(window).height()-200), 200, 50)
 
-		@blocks.push new Block(50, START_HEIGHT, (Math.floor((Math.random()*MAX_GRAVITY)+1)))
-		setInterval(@getBlock.bind(@), 3000)
+		@blocks.push new Block(50, START_HEIGHT, ((Math.random()*MAX_GRAVITY)+MIN_GRAVITY))
+		@generateBlockInterval = setInterval(@getBlock.bind(@), 2000)
+		@timerInterval = setInterval(@countdown.bind(@), 1000)
 
 		@setEventHandlers(@)
 
@@ -67,29 +71,54 @@ Game = ->
 		if @right
 			@player.x+=@player.speed
 
+		blocksToClear = []
+
 		for block in @blocks
 			# collision detection else let gravity do its thing.
 			if block.y > @height
-				@blocks.splice(@blocks.indexOf(block),1)
+				blocksToClear.push block
+				@score-=2
 			else if (block.y >= @player.y and block.y < @player.y+@player.h) and (block.x >= @player.x and block.x < @player.x+@player.w)
-				@blocks.splice(@blocks.indexOf(block),1)
+				blocksToClear.push block
 				@score+=10
 
 			$('.score').html(@score)
 
+		# Clear out any blocks that have collided with player or offscreen
+		for block in blocksToClear
+			@blocks.splice(@blocks.indexOf(block),1)
+
+		# Added gravity to block.y
 		for block in @blocks
 			block.y+=block.g
 
 		return
 
 	@getBlock = ->
-		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, (Math.floor((Math.random()*MAX_GRAVITY)+1)) )
+		grav = @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY)
+		console.log grav
+		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, grav )
 		return
 
 	@animate = ->
-		requestAnimationFrame(@animate.bind(@))
+		@frameAnimationId = window.requestAnimationFrame(@animate.bind(@))
 		@paint.apply(@)
 		return
+
+	@countdown = ->
+		timeNow = new Date().getTime()
+		$('.time').html Math.round((@timeLeft-timeNow)/1000)+' seconds left.'
+		if Math.round((@timeLeft-timeNow)/1000) < 0
+			@gameOver()
+			$('.time').html 'Game over.'
+		return
+
+	@gameOver = ->
+		window.cancelAnimationFrame(@frameAnimationId)
+		return
+
+	@getRandomArbitrary = (min, max) ->
+		return Math.random() * (max - min) + min
 
 	@setEventHandlers = (self) ->
 		$(window).keydown (e) ->
