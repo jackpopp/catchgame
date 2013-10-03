@@ -1,9 +1,11 @@
-Block = (x,y,g) ->
+Block = (x,y,g,c,t) ->
 	@x = x
 	@y = y
 	@g = g
-	@h = 10
-	@w = 10
+	@h = 20
+	@w = 20
+	@colour = c
+	@type = t
 	return
 
 Player = (x, y, w, h) ->
@@ -17,8 +19,11 @@ Player = (x, y, w, h) ->
 Game = ->
 
 	START_HEIGHT = 50
-	MIN_GRAVITY = 2
-	MAX_GRAVITY = 3.2
+	MIN_GRAVITY = 1
+	MAX_GRAVITY = 5.2
+	LEVEL_UP_SCORE = 7
+	GOOD_BLOCK_INTERVAL = 1500
+	BAD_BLOCK_INTERVAL = 5000
 
 	@canvasElement = null
 	@canvas = null
@@ -34,17 +39,24 @@ Game = ->
 	@frameAnimationId = null
 	@generateBlockInterval = null
 
+	@level = 1
+	@lives = 5
+
+
 	@init = ->
 		@canvasElement = $('#canvas')[0]
 		@canvas = @canvasElement.getContext('2d')
 		@canvas.canvas.width = @width
 		@canvas.canvas.height = @height
 
+		$('.lives').html @lives+' Lives'
+
 		@player = new Player((($(window).width()/2)-100), ($(window).height()-200), 200, 50)
 
-		@blocks.push new Block(50, START_HEIGHT, ((Math.random()*MAX_GRAVITY)+MIN_GRAVITY))
-		@generateBlockInterval = setInterval(@getBlock.bind(@), 2000)
-		@timerInterval = setInterval(@countdown.bind(@), 1000)
+		@blocks.push new Block( 50, START_HEIGHT, ((Math.random()*MAX_GRAVITY)+MIN_GRAVITY), 'black', 'good' )
+		@generateBlockInterval = setInterval(@genBlock.bind(@), GOOD_BLOCK_INTERVAL/@level)
+		@generateBadInterval = setInterval(@genBadBlog.bind(@), BAD_BLOCK_INTERVAL/@level)
+		#@timerInterval = setInterval(@countdown.bind(@), 1000)
 
 		@setEventHandlers(@)
 
@@ -59,6 +71,7 @@ Game = ->
 		@canvas.fillRect(@player.x, @player.y, @player.w, @player.h)
 
 		for block in @blocks
+			@canvas.fillStyle = block.colour
 			@canvas.fillRect(block.x,block.y, block.h, block.w)
 
 		if @player.x <= 0
@@ -77,12 +90,17 @@ Game = ->
 			# collision detection else let gravity do its thing.
 			if block.y > @height
 				blocksToClear.push block
-				@score-=2
+				@score-=1
 			else if (block.y >= @player.y and block.y < @player.y+@player.h) and (block.x >= @player.x and block.x < @player.x+@player.w)
+				if block.type is 'good'
+					@score+=(@level)
+				else if block.type is 'bad'
+					@lives--
+					$('.lives').html @lives+' Lives'
+					@gameOver() if @lives is 0
 				blocksToClear.push block
-				@score+=10
 
-			$('.score').html(@score)
+			$('.score').html @score+'/'+@level*@level*LEVEL_UP_SCORE
 
 		# Clear out any blocks that have collided with player or offscreen
 		for block in blocksToClear
@@ -92,10 +110,21 @@ Game = ->
 		for block in @blocks
 			block.y+=block.g
 
+		if @score > @level*@level*LEVEL_UP_SCORE
+			@level++
+			$('.level').html 'Level '+ @level
+			clearInterval(@generateBadInterval)
+			clearInterval(@generateBlockInterval)
+			@generateBadInterval = setInterval(@genBadBlog.bind(@), BAD_BLOCK_INTERVAL/@level)
+			@generateBlockInterval = setInterval(@genBlock.bind(@), GOOD_BLOCK_INTERVAL/@level)
 		return
 
-	@getBlock = ->
-		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY) )
+	@genBlock = ->
+		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY), 'black', 'good' )
+		return
+
+	@genBadBlog = ->
+		@blocks.push new Block( (Math.floor((Math.random()*@width)+1)), START_HEIGHT, @getRandomArbitrary(MIN_GRAVITY, MAX_GRAVITY), 'red', 'bad' )
 		return
 
 	@animate = ->
